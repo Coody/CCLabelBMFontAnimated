@@ -172,6 +172,7 @@ void CCLabelBMFontAnimated::runActionOnSpriteAtIndex(int index, cocos2d::FiniteT
 
 void CCLabelBMFontAnimated::runActionOnAllSprites(cocos2d::Action* action, bool removeOnCompletion, cocos2d::CallFunc *callFuncOnCompletion){
     
+    
     const int numChars = numLetters();
     
     for (int i = 0; i < numChars; i++) {
@@ -224,38 +225,65 @@ void CCLabelBMFontAnimated::stopActionsOnAllSprites(){
     }
 }
 
-
-void CCLabelBMFontAnimated::runActionOnAllSpritesSequentially(cocos2d::FiniteTimeAction* action, float duration, bool removeOnCompletion, cocos2d::CallFunc *callFuncOnCompletion){
+/**
+ 重要！！
+ 
+ - parameter action 你所定義的動作
+ - parameter duration 動畫時間
+ - parameter removeOnCompletion 是否在動畫後移除 CCLabelBMF
+ - parameter callFuncOnCompletion 完成後的動作
+ */
+void CCLabelBMFontAnimated::runActionOnAllSpritesSequentially(cocos2d::FiniteTimeAction* action,
+                                                              float duration,
+                                                              bool removeOnCompletion,
+                                                              cocos2d::CallFunc *callFuncOnCompletion){
     
+    // 取得字數
     const int numChars = numLetters();
     
+    // 動畫效果必須超過兩個字元
     if (numChars < 2) {
         cocos2d::log("CCLabelBMFontAnimated - runActionOnAllSpritesSequentially() requires at least 2 children to operate");
         return;
     }
     
+    
     for (int i = 0; i < numChars; i++) {
         
+        // 將動畫時間均勻切割後，計算出每個字的延遲時間、以及動畫時間
         cocos2d::DelayTime *delay = cocos2d::DelayTime::create((duration/(numChars-1)) *i);
+        
+        // copy 後放入新的 action
         cocos2d::Action *actionCopy = action->clone();
         cocos2d::Sequence *delayAndAction = cocos2d::Sequence::create(delay, actionCopy, NULL);
+        
+        // 取得單一字元
         cocos2d::Sprite *charSprite = getLetter(i);
         
+        // 是否為最後一個字
+        //（如果是最後一個字，還會加入相關動作）
         if (i == numChars-1) { //if is the last character, run the call func actions
             
+            // 建立一個 array 將最後一個字以及後面的動作存起來，然後播放
             cocos2d::Vector<cocos2d::FiniteTimeAction*> actionsArray;
             actionsArray.pushBack(delayAndAction);
             
+            // 是否有回呼？
             if (callFuncOnCompletion != nullptr) {
                 actionsArray.pushBack(callFuncOnCompletion);
             }
+            
+            // 是否需要在播放以後移除
             if (removeOnCompletion) {
                 actionsArray.pushBack(cocos2d::CallFunc::create(CC_CALLBACK_0(CCLabelBMFontAnimated::removeFromParent, this)));
             }
+            
             cocos2d::Sequence *actionsSequence = cocos2d::Sequence::create(actionsArray);
             charSprite->runAction(actionsSequence);
+            
         }
-        else{ //if is not the last character, just run the action
+        else{ 
+            //if is not the last character, just run the action
             charSprite->runAction(delayAndAction);}
         
     }
